@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Poll — Broken Pickaxe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark px-4">
+    <a href="/" class="navbar-brand fw-bold fs-4">&#9935; Broken Pickaxe</a>
+    <span class="text-secondary small">&#128202; Team Poll</span>
+</nav>
+
+<div class="container py-5">
+    <div class="row g-4">
+
+        <!-- Create Poll Form -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white fw-semibold">
+                    Create a Poll
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/poll/create">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Question</label>
+                            <input type="text" name="question" class="form-control"
+                                   placeholder="e.g. Where should we have lunch?" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold">Options</label>
+                            <div id="options-list">
+                                <input type="text" name="options" class="form-control mb-2"
+                                       placeholder="Option 1" required>
+                                <input type="text" name="options" class="form-control mb-2"
+                                       placeholder="Option 2" required>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1"
+                                    onclick="addOption()">+ Add Option</button>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-3">Create Poll</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Polls List -->
+        <div class="col-lg-8">
+            <h4 class="fw-bold mb-4">Active Polls</h4>
+
+            {% if polls %}
+                {% for poll in polls %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">{{ poll.question }}</span>
+                        <span class="badge bg-primary">{{ poll.total_votes }} vote{{ 's' if poll.total_votes != 1 }}</span>
+                    </div>
+                    <div class="card-body">
+                        {% for option in poll.options %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>{{ option.text }}</span>
+                                <span class="text-muted small">
+                                    {{ option.votes }} vote{{ 's' if option.votes != 1 }}
+                                    {% if poll.total_votes > 0 %}
+                                        ({{ option.percentage(poll.total_votes) }}%)
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 20px;">
+                                    <div class="progress-bar"
+                                         style="width: {{ option.percentage(poll.total_votes) }}%">
+                                    </div>
+                                </div>
+                                <form method="POST" action="/poll/vote/{{ option.id }}">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm">Vote</button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center text-muted py-5">
+                    <p class="fs-1">&#128202;</p>
+                    <p>No polls yet. Create one using the form!</p>
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<footer class="text-center text-muted py-4 mt-4 border-top">
+    <small>&#9935; Broken Pickaxe &mdash; <a href="/">Back to Hub</a></small>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let count = 2;
+    function addOption() {
+        count++;
+        const list = document.getElementById('options-list');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.name = 'options';
+        input.className = 'form-control mb-2';
+        input.placeholder = 'Option ' + count;
+        list.appendChild(input);
+    }
+</script>
+
+</body>
+</html>
