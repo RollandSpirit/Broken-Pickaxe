@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Library — Broken Pickaxe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+        .link-card:hover { transform: translateY(-2px); }
+        .link-favicon { width:16px; height:16px; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark px-4">
+    <a href="/" class="navbar-brand fw-bold fs-4">&#9935; Broken Pickaxe</a>
+    <span class="text-secondary small">&#128278; Link Library</span>
+</nav>
+
+<div class="container py-5">
+    <div class="row g-4">
+
+        <!-- Sidebar: Add + Filter -->
+        <div class="col-lg-4">
+
+            <!-- Add Link -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white fw-semibold">
+                    Add a Link
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/link-library/add">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Title</label>
+                            <input type="text" name="title" class="form-control"
+                                   placeholder="e.g. Company Handbook" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">URL</label>
+                            <input type="text" name="url" class="form-control"
+                                   placeholder="https://..." required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Description</label>
+                            <input type="text" name="description" class="form-control"
+                                   placeholder="Brief description (optional)">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Category</label>
+                            <input type="text" name="category" class="form-control"
+                                   placeholder="e.g. Docs, Tools, Resources"
+                                   list="category-suggestions">
+                            <datalist id="category-suggestions">
+                                {% for cat in categories %}
+                                <option value="{{ cat }}">
+                                {% endfor %}
+                                <option value="Docs">
+                                <option value="Tools">
+                                <option value="Resources">
+                                <option value="Design">
+                                <option value="Engineering">
+                            </datalist>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Save Link</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Filter by Category -->
+            <div class="card shadow-sm">
+                <div class="card-header fw-semibold">Filter by Category</div>
+                <div class="list-group list-group-flush">
+                    <a href="/link-library"
+                       class="list-group-item list-group-item-action d-flex justify-content-between
+                              {{ 'active' if not current_category }}">
+                        All Links
+                        <span class="badge bg-secondary rounded-pill">{{ links|length if not current_category else '' }}</span>
+                    </a>
+                    {% for cat in categories %}
+                    <a href="/link-library?category={{ cat }}"
+                       class="list-group-item list-group-item-action {{ 'active' if current_category == cat }}">
+                        {{ cat }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Links Grid -->
+        <div class="col-lg-8">
+
+            <!-- Search Bar -->
+            <form method="GET" action="/link-library" class="mb-4">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control"
+                           placeholder="Search links..." value="{{ search }}">
+                    {% if current_category %}
+                    <input type="hidden" name="category" value="{{ current_category }}">
+                    {% endif %}
+                    <button class="btn btn-outline-secondary" type="submit">Search</button>
+                    {% if search %}
+                    <a href="/link-library" class="btn btn-outline-danger">&#10005;</a>
+                    {% endif %}
+                </div>
+            </form>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0">
+                    {% if current_category %}{{ current_category }}
+                    {% elif search %}Results for "{{ search }}"
+                    {% else %}All Links{% endif %}
+                </h4>
+                <span class="badge bg-primary rounded-pill">{{ links|length }} link{{ 's' if links|length != 1 }}</span>
+            </div>
+
+            {% if links %}
+                <div class="row g-3">
+                {% for link in links %}
+                <div class="col-md-6">
+                    <div class="card shadow-sm link-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <h6 class="card-title mb-0 fw-semibold">
+                                    <img src="https://www.google.com/s2/favicons?domain={{ link.url }}"
+                                         class="link-favicon me-1" alt="" onerror="this.style.display='none'">
+                                    {{ link.title }}
+                                </h6>
+                                <span class="badge bg-secondary ms-2" style="white-space:nowrap;">{{ link.category }}</span>
+                            </div>
+                            {% if link.description %}
+                            <p class="card-text text-muted small mb-2">{{ link.description }}</p>
+                            {% endif %}
+                            <div class="d-flex gap-2 mt-auto pt-2">
+                                <a href="{{ link.url }}" target="_blank" rel="noopener"
+                                   class="btn btn-outline-primary btn-sm flex-grow-1">
+                                    Open &rarr;
+                                </a>
+                                <form method="POST" action="/link-library/delete/{{ link.id }}"
+                                      onsubmit="return confirm('Remove this link?')">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">&#128465;</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-5">
+                    <p class="fs-1">&#128278;</p>
+                    <p class="mb-0">No links found.</p>
+                    <p class="small">Add a link using the form on the left.</p>
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<footer class="text-center text-muted py-4 mt-4 border-top">
+    <small>&#9935; Broken Pickaxe &mdash; <a href="/">Back to Hub</a></small>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

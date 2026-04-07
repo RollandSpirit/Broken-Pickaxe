@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Zone Buddy — Broken Pickaxe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+        .tz-card { transition: transform .15s ease, box-shadow .15s ease; }
+        .tz-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.1) !important; }
+        .clock-time { font-size: 2rem; font-weight: 700; letter-spacing: -1px; }
+        .work-hours { background: #e8f5e9; }
+        .off-hours  { background: #fce4ec; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark px-4">
+    <a href="/" class="navbar-brand fw-bold fs-4">&#9935; Broken Pickaxe</a>
+    <span class="text-secondary small">&#127758; Time Zone Buddy</span>
+</nav>
+
+<div class="container py-5">
+    <div class="row g-4">
+
+        <!-- Add Team Member Form -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white fw-semibold">
+                    Add Team Member
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/timezone/add">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Name</label>
+                            <input type="text" name="name" class="form-control"
+                                   placeholder="e.g. Sam Chen" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Role (optional)</label>
+                            <input type="text" name="role" class="form-control"
+                                   placeholder="e.g. Designer">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Time Zone</label>
+                            <select name="timezone" class="form-select" required>
+                                <optgroup label="Americas">
+                                    <option value="America/New_York">Eastern Time (ET)</option>
+                                    <option value="America/Chicago">Central Time (CT)</option>
+                                    <option value="America/Denver">Mountain Time (MT)</option>
+                                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                                    <option value="America/Anchorage">Alaska Time (AKT)</option>
+                                    <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+                                    <option value="America/Toronto">Toronto</option>
+                                    <option value="America/Vancouver">Vancouver</option>
+                                    <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                                    <option value="America/Mexico_City">Mexico City</option>
+                                    <option value="America/Argentina/Buenos_Aires">Buenos Aires</option>
+                                </optgroup>
+                                <optgroup label="Europe">
+                                    <option value="Europe/London">London (GMT/BST)</option>
+                                    <option value="Europe/Paris">Paris / Berlin (CET)</option>
+                                    <option value="Europe/Amsterdam">Amsterdam</option>
+                                    <option value="Europe/Stockholm">Stockholm</option>
+                                    <option value="Europe/Madrid">Madrid</option>
+                                    <option value="Europe/Rome">Rome</option>
+                                    <option value="Europe/Warsaw">Warsaw</option>
+                                    <option value="Europe/Helsinki">Helsinki</option>
+                                    <option value="Europe/Istanbul">Istanbul</option>
+                                    <option value="Europe/Moscow">Moscow</option>
+                                </optgroup>
+                                <optgroup label="Asia / Pacific">
+                                    <option value="Asia/Dubai">Dubai (GST)</option>
+                                    <option value="Asia/Kolkata">India (IST)</option>
+                                    <option value="Asia/Dhaka">Dhaka (BST)</option>
+                                    <option value="Asia/Bangkok">Bangkok (ICT)</option>
+                                    <option value="Asia/Singapore">Singapore (SGT)</option>
+                                    <option value="Asia/Shanghai">Beijing / Shanghai (CST)</option>
+                                    <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                    <option value="Asia/Seoul">Seoul (KST)</option>
+                                    <option value="Australia/Sydney">Sydney (AEST)</option>
+                                    <option value="Australia/Melbourne">Melbourne</option>
+                                    <option value="Pacific/Auckland">Auckland (NZST)</option>
+                                </optgroup>
+                                <optgroup label="Africa">
+                                    <option value="Africa/Cairo">Cairo (EET)</option>
+                                    <option value="Africa/Johannesburg">Johannesburg (SAST)</option>
+                                    <option value="Africa/Lagos">Lagos (WAT)</option>
+                                    <option value="Africa/Nairobi">Nairobi (EAT)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Add Member</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-body py-3 small">
+                    <p class="fw-semibold mb-2">Working Hours Indicator</p>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <div style="width:16px;height:16px;background:#e8f5e9;border-radius:4px;border:1px solid #c8e6c9;"></div>
+                        <span>Within 9 AM – 6 PM local time</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="width:16px;height:16px;background:#fce4ec;border-radius:4px;border:1px solid #f8bbd0;"></div>
+                        <span>Outside working hours</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timezone Cards -->
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Your Team</h4>
+                <span class="badge bg-primary rounded-pill">{{ members|length }} member{{ 's' if members|length != 1 }}</span>
+            </div>
+
+            {% if members %}
+                <div class="row g-3" id="member-grid">
+                {% for member in members %}
+                <div class="col-sm-6">
+                    <div class="card shadow-sm tz-card" id="card-{{ member.id }}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="fw-bold mb-0">{{ member.name }}</h6>
+                                    {% if member.role %}
+                                    <small class="text-muted">{{ member.role }}</small>
+                                    {% endif %}
+                                </div>
+                                <form method="POST" action="/timezone/delete/{{ member.id }}"
+                                      onsubmit="return confirm('Remove {{ member.name }}?')">
+                                    <button type="submit"
+                                            class="btn btn-outline-danger btn-sm py-0 px-1">&#128465;</button>
+                                </form>
+                            </div>
+                            <div class="clock-time" data-tz="{{ member.timezone }}" id="time-{{ member.id }}">--:--</div>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <span class="text-muted small" data-tz-date="{{ member.timezone }}" id="date-{{ member.id }}">--</span>
+                                <span class="badge" id="status-{{ member.id }}">--</span>
+                            </div>
+                            <small class="text-muted" style="font-size:.7rem;">{{ member.timezone.replace('_', ' ') }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-5">
+                    <p class="fs-1">&#127758;</p>
+                    <p class="mb-0">No team members yet.</p>
+                    <p class="small">Add your team members using the form on the left.</p>
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<footer class="text-center text-muted py-4 mt-4 border-top">
+    <small>&#9935; Broken Pickaxe &mdash; <a href="/">Back to Hub</a></small>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function updateClocks() {
+        const now = new Date();
+        document.querySelectorAll('[data-tz]').forEach(el => {
+            const tz = el.dataset.tz;
+            const memberId = el.id.split('-')[1];
+            try {
+                // Time
+                const timeStr = now.toLocaleTimeString('en-US', {
+                    timeZone: tz,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                el.textContent = timeStr;
+
+                // Date
+                const dateEl = document.getElementById('date-' + memberId);
+                if (dateEl) {
+                    dateEl.textContent = now.toLocaleDateString('en-US', {
+                        timeZone: tz,
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }
+
+                // Working hours status
+                const localHour = parseInt(now.toLocaleString('en-US', {
+                    timeZone: tz,
+                    hour: 'numeric',
+                    hour12: false
+                }));
+                const statusEl = document.getElementById('status-' + memberId);
+                const card = document.getElementById('card-' + memberId);
+                if (statusEl && card) {
+                    const isWorking = localHour >= 9 && localHour < 18;
+                    statusEl.textContent = isWorking ? '🟢 Working' : '🔴 Off hours';
+                    statusEl.className = 'badge ' + (isWorking ? 'bg-success' : 'bg-secondary');
+                    card.querySelector('.card-body').classList.toggle('work-hours', isWorking);
+                    card.querySelector('.card-body').classList.toggle('off-hours', !isWorking);
+                }
+            } catch(e) {
+                el.textContent = 'Unknown TZ';
+            }
+        });
+    }
+
+    updateClocks();
+    setInterval(updateClocks, 30000); // update every 30s
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Board — Broken Pickaxe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+        .feedback-card.resolved { opacity: 0.55; }
+        .category-Praise  { border-left: 4px solid #198754; }
+        .category-Idea    { border-left: 4px solid #0d6efd; }
+        .category-Concern { border-left: 4px solid #dc3545; }
+        .category-General { border-left: 4px solid #6c757d; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark px-4">
+    <a href="/" class="navbar-brand fw-bold fs-4">&#9935; Broken Pickaxe</a>
+    <span class="text-secondary small">&#128172; Feedback Board</span>
+</nav>
+
+<div class="container py-5">
+    <div class="row g-4">
+
+        <!-- Submit Feedback Form -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white fw-semibold">
+                    Submit Feedback
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">Your feedback is anonymous. Be honest!</p>
+                    <form method="POST" action="/feedback/submit">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Category</label>
+                            <select name="category" class="form-select">
+                                <option value="Praise">&#127881; Praise</option>
+                                <option value="Idea">&#128161; Idea</option>
+                                <option value="Concern">&#9888;&#65039; Concern</option>
+                                <option value="General">&#128172; General</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Your Feedback</label>
+                            <textarea name="content" class="form-control" rows="5"
+                                      placeholder="Share your thoughts..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Submit Anonymously</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-body py-3">
+                    <p class="fw-semibold mb-2 small">Categories</p>
+                    <div class="d-flex flex-column gap-1">
+                        <span class="small"><span class="text-success fw-bold">&#9646;</span> Praise &mdash; positive recognition</span>
+                        <span class="small"><span class="text-primary fw-bold">&#9646;</span> Idea &mdash; suggestion or feature</span>
+                        <span class="small"><span class="text-danger fw-bold">&#9646;</span> Concern &mdash; problem or issue</span>
+                        <span class="small"><span class="text-secondary fw-bold">&#9646;</span> General &mdash; anything else</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Cards -->
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">
+                    {% if show_resolved %}All Feedback{% else %}Open Feedback{% endif %}
+                </h4>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary rounded-pill">{{ feedbacks|length }}</span>
+                    <a href="/feedback?show_resolved={{ '0' if show_resolved else '1' }}"
+                       class="btn btn-outline-secondary btn-sm">
+                        {{ 'Hide Resolved' if show_resolved else 'Show Resolved' }}
+                    </a>
+                </div>
+            </div>
+
+            {% if feedbacks %}
+                <div class="d-flex flex-column gap-3">
+                {% for fb in feedbacks %}
+                <div class="card shadow-sm feedback-card category-{{ fb.category }} {{ 'resolved' if fb.resolved }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                {% if fb.category == 'Praise' %}
+                                    <span class="badge bg-success me-1">&#127881; Praise</span>
+                                {% elif fb.category == 'Idea' %}
+                                    <span class="badge bg-primary me-1">&#128161; Idea</span>
+                                {% elif fb.category == 'Concern' %}
+                                    <span class="badge bg-danger me-1">&#9888; Concern</span>
+                                {% else %}
+                                    <span class="badge bg-secondary me-1">&#128172; General</span>
+                                {% endif %}
+                                {% if fb.resolved %}
+                                    <span class="badge bg-light text-muted border">Resolved</span>
+                                {% endif %}
+                            </div>
+                            <span class="text-muted small">{{ fb.created_at.strftime('%b %-d, %I:%M %p') }}</span>
+                        </div>
+                        <p class="mb-2" style="white-space:pre-wrap;">{{ fb.content }}</p>
+                        <form method="POST" action="/feedback/resolve/{{ fb.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-{{ 'secondary' if fb.resolved else 'success' }}">
+                                {{ '↩ Reopen' if fb.resolved else '✓ Mark Resolved' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-5">
+                    <p class="fs-1">&#128172;</p>
+                    <p class="mb-0">No feedback yet.</p>
+                    <p class="small">Encourage your team to share their thoughts!</p>
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<footer class="text-center text-muted py-4 mt-4 border-top">
+    <small>&#9935; Broken Pickaxe &mdash; <a href="/">Back to Hub</a></small>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
