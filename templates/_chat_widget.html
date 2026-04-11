@@ -1,0 +1,245 @@
+<!-- ── Broken Pickaxe AI Chat Widget ── -->
+<style>
+  #bp-chat-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #0d6efd;
+    color: #fff;
+    border: none;
+    font-size: 1.4rem;
+    box-shadow: 0 4px 16px rgba(13,110,253,.45);
+    cursor: pointer;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .2s, background .2s;
+  }
+  #bp-chat-btn:hover { background: #0b5ed7; transform: scale(1.08); }
+
+  #bp-chat-panel {
+    position: fixed;
+    bottom: 88px;
+    right: 24px;
+    width: 340px;
+    max-height: 480px;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    display: none;
+    flex-direction: column;
+    z-index: 1049;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  #bp-chat-panel.open { display: flex; }
+
+  #bp-chat-header {
+    background: #0d6efd;
+    color: #fff;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: .9rem;
+    flex-shrink: 0;
+  }
+  #bp-chat-header span { opacity: .85; font-size: .75rem; font-weight: 400; }
+  #bp-chat-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: .8;
+    padding: 0;
+    line-height: 1;
+  }
+  #bp-chat-close:hover { opacity: 1; }
+
+  #bp-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #f8f9fa;
+  }
+
+  .bp-msg {
+    max-width: 85%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: .85rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .bp-msg.user {
+    align-self: flex-end;
+    background: #0d6efd;
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .bp-msg.assistant {
+    align-self: flex-start;
+    background: #fff;
+    color: #212529;
+    border: 1px solid #dee2e6;
+    border-bottom-left-radius: 4px;
+  }
+  .bp-msg.typing { opacity: .6; font-style: italic; }
+
+  #bp-chat-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid #dee2e6;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  #bp-chat-input {
+    flex: 1;
+    border: 1px solid #dee2e6;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: .85rem;
+    outline: none;
+    resize: none;
+    line-height: 1.4;
+    max-height: 80px;
+    overflow-y: auto;
+  }
+  #bp-chat-input:focus { border-color: #0d6efd; }
+  #bp-chat-send {
+    background: #0d6efd;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    font-size: .9rem;
+    flex-shrink: 0;
+    align-self: flex-end;
+    transition: background .15s;
+  }
+  #bp-chat-send:hover { background: #0b5ed7; }
+  #bp-chat-send:disabled { background: #adb5bd; cursor: default; }
+</style>
+
+<!-- Floating Button -->
+<button id="bp-chat-btn" title="Ask the assistant" onclick="bpToggleChat()">
+  &#129302;
+</button>
+
+<!-- Chat Panel -->
+<div id="bp-chat-panel">
+  <div id="bp-chat-header">
+    <div>
+      &#129302; Pickaxe Assistant
+      <br><span>Ask me anything about the hub</span>
+    </div>
+    <button id="bp-chat-close" onclick="bpToggleChat()" title="Close">&#10005;</button>
+  </div>
+
+  <div id="bp-chat-messages">
+    <div class="bp-msg assistant">
+      Hi! I'm your Broken Pickaxe assistant. Ask me how to use any of the 10 apps, or what features are available. &#9935;
+    </div>
+  </div>
+
+  <div id="bp-chat-input-row">
+    <textarea id="bp-chat-input"
+              placeholder="Ask a question..."
+              rows="1"
+              onkeydown="bpHandleKey(event)"
+              oninput="bpAutoResize(this)"></textarea>
+    <button id="bp-chat-send" onclick="bpSend()" title="Send">&#10148;</button>
+  </div>
+</div>
+
+<script>
+  const bpHistory = [];
+  let bpOpen = false;
+
+  function bpToggleChat() {
+    bpOpen = !bpOpen;
+    const panel = document.getElementById('bp-chat-panel');
+    panel.classList.toggle('open', bpOpen);
+    if (bpOpen) {
+      document.getElementById('bp-chat-input').focus();
+      bpScrollBottom();
+    }
+  }
+
+  function bpHandleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      bpSend();
+    }
+  }
+
+  function bpAutoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+  }
+
+  function bpScrollBottom() {
+    const msgs = document.getElementById('bp-chat-messages');
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function bpAddMsg(role, text, isTyping = false) {
+    const msgs = document.getElementById('bp-chat-messages');
+    const div  = document.createElement('div');
+    div.className = 'bp-msg ' + role + (isTyping ? ' typing' : '');
+    div.textContent = text;
+    msgs.appendChild(div);
+    bpScrollBottom();
+    return div;
+  }
+
+  async function bpSend() {
+    const input   = document.getElementById('bp-chat-input');
+    const sendBtn = document.getElementById('bp-chat-send');
+    const message = input.value.trim();
+    if (!message) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    sendBtn.disabled = true;
+
+    bpAddMsg('user', message);
+    bpHistory.push({ role: 'user', content: message });
+
+    const typingEl = bpAddMsg('assistant', 'Thinking…', true);
+
+    try {
+      const res  = await fetch('/chat', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ message, history: bpHistory.slice(-10) }),
+      });
+      const data = await res.json();
+      const reply = data.reply || 'Sorry, no response received.';
+
+      typingEl.textContent = reply;
+      typingEl.classList.remove('typing');
+      bpHistory.push({ role: 'assistant', content: reply });
+    } catch (err) {
+      typingEl.textContent = 'Connection error — please try again.';
+      typingEl.classList.remove('typing');
+    }
+
+    sendBtn.disabled = false;
+    bpScrollBottom();
+    input.focus();
+  }
+</script>

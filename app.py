@@ -1,6 +1,6 @@
 import os
 import datetime
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 
@@ -532,6 +532,68 @@ def delete_article(article_id):
     db.session.delete(article)
     db.session.commit()
     return redirect(url_for('wiki'))
+
+
+# ── AI Chatbot ────────────────────────────────────────────
+
+CHAT_SYSTEM_PROMPT = """You are a friendly, concise assistant built into the Broken Pickaxe Productivity Hub — a suite of 10 internal team tools built with Flask. Help users find features and get things done quickly.
+
+Here is every app and how it works:
+
+1. Team Poll (/poll) — Create a poll with a question and 2+ options. Others vote by clicking Vote. Results update live with progress bars.
+
+2. Daily Standup (/standup) — Each morning, enter your name and fill in Yesterday / Today / Blockers. Everyone's updates for the current day appear as cards on the right.
+
+3. Meeting Notes (/meeting-notes) — Create a meeting with a title and date, then open it to add bullet notes and action items. Action items can be assigned to a person and checked off when done.
+
+4. Link Library (/link-library) — Save shared bookmarks with a title, URL, description, and category. Filter by category using the sidebar or search by keyword.
+
+5. Expense Tracker (/expense-tracker) — Log expenses with description, amount, category, and who paid. A summary table shows totals per category and a grand total.
+
+6. Feedback Board (/feedback) — Submit anonymous feedback tagged as Praise, Idea, Concern, or General. Anyone can mark items resolved. Use "Show Resolved" to see archived items.
+
+7. Project Dashboard (/kanban) — A three-column kanban board: To Do, Doing, Done. Add tasks at the top, then move them forward or back with the arrow buttons. Delete when done.
+
+8. Time Zone Buddy (/timezone) — Add team members by name, role, and timezone. Live clocks update automatically. Cards turn green when someone is within 9am–6pm local time.
+
+9. Availability Planner (/availability) — Enter your name and click time slots on the Mon–Fri grid (8am–5pm) to mark when you're free. Submit to save. The heatmap on the right shows where the whole team overlaps — darker = more people available.
+
+10. Knowledge Base (/wiki) — Write internal articles with a title, category, and plain-text content. Browse by category in the sidebar or search by keyword. Click any article to read it, then Edit or Delete from the article page.
+
+Keep answers short and direct. Give step-by-step instructions when someone asks how to do something. If a question is unrelated to Broken Pickaxe, gently redirect back to the hub."""
+
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    data    = request.get_json(silent=True) or {}
+    message = data.get('message', '').strip()
+    history = data.get('history', [])
+
+    if not message:
+        return jsonify({'error': 'No message'}), 400
+
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key:
+        return jsonify({'reply': (
+            'The AI assistant isn\'t configured yet. '
+            'Add your ANTHROPIC_API_KEY to the environment variables and restart the app.'
+        )})
+
+    try:
+        from anthropic import Anthropic
+        client   = Anthropic(api_key=api_key)
+        messages = [{'role': m['role'], 'content': m['content']} for m in history]
+        messages.append({'role': 'user', 'content': message})
+
+        response = client.messages.create(
+            model      = 'claude-haiku-4-5-20251001',
+            max_tokens = 600,
+            system     = CHAT_SYSTEM_PROMPT,
+            messages   = messages,
+        )
+        return jsonify({'reply': response.content[0].text})
+    except Exception as e:
+        return jsonify({'reply': 'Sorry, something went wrong. Please try again.'}), 200
 
 
 # ── Legacy redirect ───────────────────────────────────────
